@@ -1,6 +1,6 @@
-import axios from 'axios';
+const axios = require('axios');
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   const { bookId, episode = 1 } = req.query;
 
   if (!bookId) {
@@ -12,7 +12,7 @@ export default async function handler(req, res) {
     const tokenRes = await axios.get("https://dramabox-token.vercel.app/token");
     const { token, deviceid } = tokenRes.data;
 
-    // 2. Menyamar Menjadi HP Android (Spoofing Headers)
+    // 2. Menyamar Menjadi HP Android
     const url = "https://sapi.dramaboxdb.com/drama-box/chapterv2/batch/load";
     const headers = {
       "User-Agent": "okhttp/4.10.0",
@@ -49,14 +49,16 @@ export default async function handler(req, res) {
     // 3. Tembak Server DramaBox
     const dbRes = await axios.post(url, data, { headers });
 
-    // 4. Tangkap Link MP4-nya
-    const videoUrl = dbRes.data.data.chapterList[0].cdnList[0];
-
-    // 5. Kirim Link Kembali ke Web Browser-mu
-    return res.status(200).json({ success: true, videoUrl });
+    // 4. Pastikan data video ada, lalu tangkap Link MP4-nya
+    if (dbRes.data && dbRes.data.data && dbRes.data.data.chapterList) {
+        const videoUrl = dbRes.data.data.chapterList[0].cdnList[0];
+        return res.status(200).json({ success: true, videoUrl });
+    } else {
+        return res.status(500).json({ success: false, error: "Video tidak ditemukan di server asal." });
+    }
     
   } catch (error) {
     console.error("Gagal menembus API:", error.message);
     return res.status(500).json({ success: false, error: "Server Video Sedang Sibuk / Gagal Memuat" });
   }
-}
+};
